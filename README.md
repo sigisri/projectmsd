@@ -1,2 +1,0 @@
-# projectmsd
-msd dimm project

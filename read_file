@@ -1,0 +1,63 @@
+module read_file();
+   logic clk,rst;
+   int i,input1,var1,var3,var4,time1,core,operation,newf;
+   string var2;
+   bit [35:0] address;
+initial
+   begin
+      clk=0;
+	forever
+	   begin
+		clk= !clk;
+		#5;
+	   end
+   end
+
+
+
+//Taking file name as a input from the user
+initial
+   begin
+	/*if($test$plusargs ("Debug"))
+	   begin
+	   var4=$fopen("trace_new.txt","r");
+	   while(!$feof(var4))
+		begin
+		   $fscanf(var4,"%0d %0d %0d %h", time1, core, operation, address);
+		   $display("%d %d %d %h", time1, core, operation, address);
+		end
+	   end*/
+
+        if($value$plusargs ("%s",var2))			
+	   begin
+        	$display("%s",var2);
+		var3=$fopen(var2,"r");
+		newf=$fopen("trace_new.txt","w");		//open new file in write mode
+		rst=1'b0;
+		while(!$feof(var3))
+		   begin
+			@(posedge clk);
+			$fscanf(var3,"%0d %0d %0d %h", time1, core, operation, address);
+			$fdisplay(newf,"%d %d %d %h", time1, core, operation, address);
+			$display("%d %d %d %h", time1, core, operation, address);
+		   end
+	   end
+	else
+	   begin
+		var1=$fopen("trace.txt","r");		//reading default trace.txt filr
+		newf=$fopen("trace_new.txt","w");
+		rst=1'b0;
+		while(!$feof(var1))
+		   begin
+			@(negedge clk);
+			$fscanf(var1,"%0d %0d %0d %h", time1, core, operation, address);
+			$fdisplay(newf,"%d %d %d %h", time1, core, operation, address);
+			$display("%d %d %d %h", time1, core, operation, address);
+		   end
+	   end
+	$fclose(var1);
+	$fclose(var3);
+	$fclose(newf);
+	
+   end
+endmodule
