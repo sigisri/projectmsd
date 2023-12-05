@@ -1,0 +1,165 @@
+module AarumessMapping3;
+  logic cpu_clk = 1'b0;
+  logic dimm_clk = 1'b0;
+  initial forever #2.0833ns cpu_clk = ~cpu_clk;
+  initial forever #4.1667ns dimm_clk = ~dimm_clk;
+
+  int cpu_counter, dimm_counter;
+parameter trcd=39;
+parameter trp=39;
+parameter tcl=40;
+parameter tbrust=8;
+int tempbg=50,tempb=50;
+int t1=0,t11=0,t21=0,t2=0,t3=0;
+  typedef struct packed {
+    longint time1;
+    int core;
+    int operation;
+    bit [35:0] address;
+    bit [1:0] byte_select;
+    bit [3:0] column1;
+    bit [0:0] channel;
+    bit [2:0] bank_group;
+    bit [1:0] bank;
+    bit [5:0] column2;
+    bit [15:0] row;
+  } MyStruct;
+  MyStruct myArray[16];
+MyStruct temp;
+  int arrayIndex = 0;
+  int var1;
+  string var2;
+  int i;
+  initial begin
+    if ($value$plusargs("%s", var2))
+      $display("%s", var2);
+    else
+      var2 = "tracecp2.txt";
+
+    var1 = $fopen(var2, "r");
+    if (!var1)
+      $fatal("Could not open file: %s", var2);
+
+    // Read data from the file into the array of structures
+    while (!$feof(var1)) begin
+     @(posedge cpu_clk) begin
+         
+        if (arrayIndex < 16) begin
+$fscanf(var1, "%0d %0d %0d %h", temp.time1, temp.core, temp.operation, temp.address);
+        temp.byte_select = temp.address[1:0];
+        temp.column1 = temp.address[5:2];
+        temp.channel = temp.address[6:6];
+        temp.bank_group = temp.address[9:7];
+        temp.bank = temp.address[11:10];
+        temp.column2 = temp.address[17:12];
+        temp.row = temp.address[33:18];  
+           myArray[arrayIndex] = temp;  
+          cpu_counter = cpu_counter + 1;
+          arrayIndex = arrayIndex + 1;
+        end
+        else begin
+          repeat (arrayIndex < 16) @(posedge cpu_clk);
+        end
+      end
+    end
+    $fclose(var1);
+  end
+
+always@(posedge dimm_clk) begin
+if(arrayIndex!=0) begin
+//$display("Entry %0d,Address Info - Byte Select: %0d, Column1: %0d, Channel: %0d, Bank Group: %0d, Bank: %0d, Column2: %0d, Row: %0d",dimm_counter,myArray[0].byte_select,myArray[0].column1,myArray[0].channel,myArray[0].bank_group,myArray[0].bank,myArray[0].column2,myArray[0].row);
+if(tempbg==myArray[0].bank_group&&tempb==myArray[0].bank) begin
+t1=t3+2+trp;
+t2=t1+trcd;
+t3=t2+tcl+tbrust;
+case(myArray[0].operation)
+	0 : begin repeat (trp) @(posedge dimm_clk);
+		  $display("%d act0 %h %h %h",2*t1,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d act1 %h %h %h",2*t11,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (trcd) @(posedge dimm_clk);
+	          $display("%d rd0 %h %h %h",2*t2,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d rd1 %h %h %h",2*t21,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (tcl) @(posedge dimm_clk);
+		  $display("%d pre %h %h",2*t3,myArray[0].bank_group,myArray[0].bank);
+    	    end
+	1 : begin repeat (trp) @(posedge dimm_clk);
+		  $display("%d act0 %h %h %h",2*t1,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d act1 %h %h %h",2*t1,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (trcd) @(posedge dimm_clk);
+	          $display("%d wr0 %h %h %h",2*t2,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d wr1 %h %h %h",2*t21,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (tcl) @(posedge dimm_clk);
+		  $display("%d pre %h %h",2*t3+2,myArray[0].bank_group,myArray[0].bank);
+    	    end 
+	2 : begin repeat (trp) @(posedge dimm_clk);
+		  $display("%d act0 %h %h %h",2*t1,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d act1 %h %h %h",2*t11,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (trcd) @(posedge dimm_clk);
+	          $display("%d rd0 %h %h %h",2*t2,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d rd1 %h %h %h",2*t21,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (tcl) @(posedge dimm_clk);
+		  $display("%d pre %h %h",2*t3+2,myArray[0].bank_group,myArray[0].bank);
+    	    end
+	default $display("enter correct operation");
+endcase
+end
+else begin
+t1=t3+2;
+t2=t1+trcd;
+t3=t2+tcl+tbrust;
+	case(myArray[0].operation)
+	0 : begin repeat (1) @(posedge dimm_clk);
+		  $display("%d act0 %h %h %h",2*t1,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d act1 %h %h %h",2*t11,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (trcd) @(posedge dimm_clk);
+	          $display("%d rd0 %h %h %h",2*t2,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d rd1 %h %h %h",2*t21,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (tcl) @(posedge dimm_clk);
+		  $display("%d pre %h %h",2*t3+2,myArray[0].bank_group,myArray[0].bank);
+    	    end
+	1 : begin repeat (1) @(posedge dimm_clk);
+		  $display("%d act0 %h %h %h",2*t1,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d act1 %h %h %h",2*t11,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (trcd) @(posedge dimm_clk);
+	          $display("%d wr0 %h %h %h",2*t2,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d wr1 %h %h %h",2*t21,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (tcl) @(posedge dimm_clk);
+		  $display("%d pre %h %h",2*t3+2,myArray[0].bank_group,myArray[0].bank);
+    	    end 
+	2 : begin repeat (1) @(posedge dimm_clk);
+		  $display("%d act0 %h %h %h",2*t1,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d act1 %h %h %h",2*t11,myArray[0].bank_group,myArray[0].bank,myArray[0].row);
+		  repeat (trcd) @(posedge dimm_clk);
+	          $display("%d rd0 %h %h %h",2*t2,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (1) @(posedge dimm_clk);
+		  $display("%d rd1 %h %h %h",2*t21,myArray[0].bank_group,myArray[0].bank,myArray[0].column2);
+		  repeat (tcl) @(posedge dimm_clk);
+		  $display("%d pre %h %h",2*t3,myArray[0].bank_group,myArray[0].bank);
+    	    end
+	default $display("enter correct operation");
+endcase
+tempbg=myArray[0].bank_group;
+tempb=myArray[0].bank;
+end
+ 
+end
+for (i = 0; i < arrayIndex - 1; i = i + 1) begin
+        myArray[i] = myArray[i + 1];
+      end
+      arrayIndex = arrayIndex - 1;
+end
+always@(posedge dimm_clk) begin
+dimm_counter=dimm_counter+1;
+end
+endmodule
