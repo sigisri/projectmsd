@@ -1,4 +1,4 @@
-module AarumessMapping3;
+module schdelur1;
   logic cpu_clk = 1'b0;
   logic dimm_clk = 1'b0;
   initial forever #2.0833ns cpu_clk = ~cpu_clk;
